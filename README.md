@@ -44,7 +44,7 @@ Unzip the `multi-llm` folder anywhere (e.g., `C:\AI\multi-llm`)
 ### 3. Open Command Prompt in the Folder cmd
 
 ```cmd
-cd C:\AI\multi-llm
+cmd C:\AI\multi-llm
 
 in cmd enter **python -m venv .venv
 .venv\Scripts\activate**
