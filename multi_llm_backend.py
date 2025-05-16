@@ -230,11 +230,18 @@ async def generate(model: Llama, prompt: str, max_tok: int) -> str:
             model,
             prompt,
             max_tokens=max_tok,
-            stop=["###", "\n\n"],
+            stop=["###", "\n\n", "USER:", "ASSISTANT:", "User:", "Assistant:"],
             echo=False,
             stream=False,
         )
     )["choices"][0]["text"].strip()
+
+def clean_answer(text):
+    # Remove any leading "ASSISTANT:" or "ISTANT:" label
+    text = re.sub(r"^[A-Z ]*ISTANT:\s*", "", text.strip(), flags=re.I)
+    # Truncate at the first occurrence of USER: or ASSISTANT: (to stop rambling)
+    split = re.split(r'\b(USER:|ASSISTANT:)\b', text, maxsplit=1)
+    return split[0].strip()
 
 async def judge_best(question: str, candidates: List[str]) -> str:
     letters = "ABCDEFG"[: len(candidates)]
@@ -279,9 +286,9 @@ async def answer_user(prompt: str, max_tok: int = MAX_TOKENS_GEN) -> str:
     if violates_safety(best):
         best = "Generated content blocked by safety policy."
 
-    # Fix ASSISTANT label if cutoff
-    if not best.strip().lower().startswith("assistant:"):
-        best = "ASSISTANT: " + best.lstrip()
+    # Clean up repeated labels and rambly output
+    best = clean_answer(best)
+    best = "ASSISTANT: " + best
 
     CACHE[prompt] = (best, time.time())
     return best
