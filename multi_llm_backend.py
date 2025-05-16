@@ -55,11 +55,18 @@ logger = logging.getLogger("multi-llm")
 # Tone & Judge settings
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = (
-    "SYSTEM: Be direct, objective, concise, unkind. No flattery or apologies. Profanity is encouraged."
+    "SYSTEM: Be absolutely direct and concise. Start with factual content immediately. Use profanity. \n"
+    "DO NOT start with any of the following under any circumstances:\n"
+    "- No greetings (hello, hi, hey, etc.)\n"
+    "- No 'I can help you with that'\n" 
+    "- No 'How can I assist you'\n"
+    "- No acknowledgments of the user's request\n"
+    "- No 'thank you for your question/message'\n"
+    "Instead, begin with substantive content directly addressing the query."
 )
 JUDGE_RUBRIC = (
     "SYSTEM: You are a brutally objective critic. Reward factual accuracy, "
-    "concision, and technical depth. Penalise flattery, apologies, and marketing tone."
+    "concision, and technical depth. Penalise flattery, repitition, apologies, and marketing tone."
 )
 PRAISE_REGEX = re.compile(r"(you'?re (amazing|great)|glad I could help|happy to assist)", re.I)
 
@@ -230,18 +237,152 @@ async def generate(model: Llama, prompt: str, max_tok: int) -> str:
             model,
             prompt,
             max_tokens=max_tok,
-            stop=["###", "\n\n", "USER:", "ASSISTANT:", "User:", "Assistant:"],
+            stop=["###", "\n\n", "USER:", "ASSISTANT:", "User:"],
             echo=False,
             stream=False,
         )
     )["choices"][0]["text"].strip()
 
 def clean_answer(text):
-    # Remove any leading "ASSISTANT:" or "ISTANT:" label
-    text = re.sub(r"^[A-Z ]*ISTANT:\s*", "", text.strip(), flags=re.I)
-    # Truncate at the first occurrence of USER: or ASSISTANT: (to stop rambling)
-    split = re.split(r'\b(USER:|ASSISTANT:)\b', text, maxsplit=1)
-    return split[0].strip()
+    text = text.strip()
+    
+    # Comprehensive greeting removal patterns
+    greeting_patterns = [
+        # Basic greetings with variations
+        r"^(hello|hi|hey|greetings|howdy)[\s,\.!\-:;]*",
+        
+        # Common assistant phrases
+        r"^(how can I (help|assist) you( today)?|what can I (help|assist) you with|how may I (help|assist) you)[\s,\.!\-:;?]*",
+        
+        # "I'll" patterns
+        r"^I('ll| will) (help|assist) you( with)?[\s,\.!\-:;]*",
+        
+        # "I'm happy/glad" patterns
+        r"^I('m| am) (happy|glad|pleased|delighted) to (help|assist)( you)?[\s,\.!\-:;]*",
+        
+        # "Let me" patterns
+        r"^let me (help|assist|know how I can help)( you)?[\s,\.!\-:;]*",
+        
+        # "I'd be happy" patterns
+        r"^I('d| would) be (happy|glad|pleased) to (help|assist)( you)?[\s,\.!\-:;]*",
+        
+        # "Thanks/thank you" patterns
+        r"^(thanks|thank you) for[\s,\.!\-:;]*",
+        
+        # "I understand" patterns
+        r"^I understand( that)?[\s,\.!\-:;]*",
+        
+        # "As per your request" patterns
+        r"^(as per|regarding|about|concerning) your (request|question|query)[\s,\.!\-:;]*",
+        
+        # "I can help you with" patterns
+        r"^I can (help|assist) you with( that)?[\s,\.!\-:;]*",
+        
+        # Acknowledgements
+        r"^(sure|certainly|absolutely|definitely|of course)[\s,\.!\-:;]*",
+        
+        # Multiple greetings (e.g., "Hi there! How can I assist you today?")
+        r"^(hi|hello|hey|greetings)[\s,\.!\-:;]*(there|everyone|friend|all)[\s,\.!\-:;]*(how|what) can I[\s,\.!\-:;]*",
+    ]
+    
+    # Apply all greeting patterns repeatedly to catch compound greetings
+    previous_text = ""
+    while previous_text != text:
+        previous_text = text
+        for pattern in greeting_patterns:
+            text = re.sub(pattern, "", text, flags=re.I)
+    
+    # Remove any leading dialogue label, even if there's junk in front
+    text = re.sub(r"^(.*?\b)?(ASSISTANT:|ISTANT:|USER:|User:|Assistant:)\s*", "", text, flags=re.I)
+    
+    # Remove any label that might appear after a period/comma (catch odd formatting)
+    text = re.sub(r"\b(ASSISTANT:|ISTANT:|USER:|User:|Assistant:)\b\s*", "", text, flags=re.I)
+    
+    # Remove duplicate phrases/greetings that appear next to each other
+    text = re.sub(r"(hello|hi|hey|greetings|how can I assist you today|what can I help you with)(\s*\W*\s*\1)+", r"\1", text, flags=re.I)
+    
+    # Remove the prompt itself if echoed
+    split = re.split(r'\b(USER:|ASSISTANT:|ISTANT:|User:|Assistant:)\b', text, maxsplit=1)
+    
+    # Clean result
+    result = split[0].strip()
+    
+    # Final check for duplicated phrases
+    segments = result.split('\n')
+    if len(segments) > 1 and segments[0] == segments[1]:
+        return '\n'.join(segments[1:])
+    
+    # Remove any "Here's" or "Here is" when they start a sentence at the beginning
+    result = re.sub(r"^(here('s| is)|this is)[\s,\.!\-:;]*", "", result, flags=re.I)
+    
+    return result
+
+
+def strip_labels(text):
+    # Remove all dialogue labels and leading/trailing whitespace, for fair comparison
+    return re.sub(r"^(.*?\b)?(ASSISTANT:|ISTANT:|USER:|User:|Assistant:)\s*", "", text, flags=re.I).strip()
+
+def anti_echo(prompt, answer):
+    # Compare prompt and answer after stripping labels/casing/whitespace
+    clean_prompt = strip_labels(prompt).lower()
+    clean_answer = strip_labels(answer).lower()
+    if clean_prompt == clean_answer:
+        return "ASSISTANT: [No answer, the model tried to echo your prompt.]"
+    return answer
+
+def enforce_no_greetings(text):
+    """A final aggressive check to ensure no greetings slip through."""
+    # Common greeting starts - aggressive matching
+    greeting_starts = [
+        "hello", "hi ", "hi,", "hi!", "hi.", "hey", "greetings", "howdy", 
+        "how can i", "how may i", "i can help", "i'll help", "i'd be", 
+        "i would be", "i am happy", "i'm happy", "thank you", "thanks for",
+        "as requested", "as per your", "sure", "certainly", "absolutely",
+        "of course", "regarding your", "about your", "in response", 
+        "concerning your", "in answer", "here's", "here is", "this is"
+    ]
+    
+    # Check for common greeting patterns at the start
+    lower_text = text.lower().strip()
+    
+    for start in greeting_starts:
+        if lower_text.startswith(start):
+            # Find the first sentence break after the greeting
+            for i, char in enumerate(text):
+                if i > len(start) + 10 and char in ['.', '!', '?', '\n']:
+                    # Return everything after this first sentence
+                    return text[i+1:].strip()
+    
+    # If no greeting detected or no suitable break point, return original
+    return text
+
+async def synthesize_answers(prompt: str, candidates: List[str], model: Llama, max_tok: int = 512) -> str:
+    # Clean candidates before synthesis to reduce redundancy
+    cleaned_candidates = [clean_answer(candidate) for candidate in candidates]
+    
+    synth_prompt = (
+        "SYSTEM: Your task is to synthesize multiple answers into a single response.\n\n"
+        "EXTREMELY IMPORTANT INSTRUCTIONS:\n"
+        "1. NEVER start with greetings like 'Hello', 'Hi', etc.\n"
+        "2. NEVER use phrases like 'I can help', 'How can I assist', etc.\n"
+        "3. NEVER acknowledge the question with 'Regarding your question...'\n"
+        "4. Start DIRECTLY with factual content\n"
+        "5. Be direct, concise and factual\n"
+        "6. Remove ALL repetitions\n\n"
+        f"User prompt: {prompt}\n\n"
+        "Candidate answers:\n"
+        + "\n---\n".join(cleaned_candidates) +
+        "\n\nFinal synthesized answer (MUST START WITH DIRECT CONTENT, NO GREETINGS OR ACKNOWLEDGMENTS):"
+    )
+    result = await generate(model, synth_prompt, max_tok)
+    
+    # Apply all cleaning steps
+    result = clean_answer(result)
+    # Apply final aggressive filtering
+    result = enforce_no_greetings(result)
+    
+    return result
+
 
 async def judge_best(question: str, candidates: List[str]) -> str:
     letters = "ABCDEFG"[: len(candidates)]
@@ -266,29 +407,27 @@ async def answer_user(prompt: str, max_tok: int = MAX_TOKENS_GEN) -> str:
     if violates_safety(prompt):
         return "Request blocked by safety policy."
 
-    # LRU-style cache check
     cached = CACHE.get(prompt)
     if cached and time.time() - cached[1] < CACHE_TTL:
         return cached[0]
 
-    # Retrieve augmentation (RAG)
     context = retrieve(prompt)
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{context}\n\nUSER: {prompt}\nASSISTANT:"
-
+    full_prompt = f"{SYSTEM_PROMPT}\n\n{context}\n\nUSER: {prompt}\n"
     models = route_models(prompt)
     outputs = await asyncio.gather(
         *[generate(m, full_prompt, max_tok) for m in models]
     )
 
-    best = await judge_best(prompt, outputs)
+    if len(outputs) == 1:
+        best = outputs[0]
+    else:
+        best = await synthesize_answers(prompt, outputs, JUDGE, max_tok=512)
 
-    # block outbound leaks (PANs, explosives, etc.)
     if violates_safety(best):
         best = "Generated content blocked by safety policy."
-
-    # Clean up repeated labels and rambly output
     best = clean_answer(best)
-    best = "ASSISTANT: " + best
+    best = anti_echo(prompt, best)
+    # best = "ASSISTANT: " + best   # REMOVE THIS LINE
 
     CACHE[prompt] = (best, time.time())
     return best
@@ -320,25 +459,47 @@ async def chat(req: ChatRequest, request: Request):
     history = CONVERSATION_HISTORY[req.session_id][-HISTORY_LIMIT:]
     memory_context = "\n".join(history)
     
-    # Prepend memory to user prompt
-    full_prompt = f"{SYSTEM_PROMPT}\n\n{memory_context}\n\nUSER: {req.prompt}\nASSISTANT:"
+    # Special handling for short prompts that might trigger greetings
+    is_short_prompt = len(req.prompt.split()) < 4
+    
+    # If it's a very short prompt, add a note to avoid greeting patterns
+    short_prompt_addition = "" if not is_short_prompt else "\nNOTE: This is a very short prompt. Do NOT respond with greetings. Be extremely direct."
+    
+    # Prepend memory to user prompt with enhanced system instructions
+    full_prompt = f"{SYSTEM_PROMPT}{short_prompt_addition}\n\n{memory_context}\n\nUSER: {req.prompt}\n"
     
     models = route_models(req.prompt)
     outputs = await asyncio.gather(*[generate(m, full_prompt, req.max_tokens or MAX_TOKENS_GEN) for m in models])
-    best = await judge_best(req.prompt, outputs)
+
+    if len(outputs) == 1:
+        best = outputs[0]
+    else:
+        # Apply initial cleaning to outputs
+        cleaned_outputs = [clean_answer(output) for output in outputs]
+        # Synthesize answers
+        best = await synthesize_answers(req.prompt, cleaned_outputs, JUDGE, max_tok=req.max_tokens or MAX_TOKENS_GEN)
+
     
     if violates_safety(best):
         best = "Generated content blocked by safety policy."
+    else:
+        # Multiple layers of cleaning for non-safety-violating content
+        best = clean_answer(best)
+        best = anti_echo(req.prompt, best)
+        best = enforce_no_greetings(best)
+        
+        # Final check for empty responses after cleaning
+        if not best.strip():
+            best = "I need more information to provide a helpful response."
     
     # Save interaction
-    CONVERSATION_HISTORY[req.session_id].append(f"USER: {req.prompt}\nASSISTANT: {best}")
+    CONVERSATION_HISTORY[req.session_id].append(f"USER: {req.prompt}\n {best}")
     return {"answer": best}
-
 
 @app.post("/stream")
 @limiter.limit(f"{RATE_LIMIT}/minute")
 async def stream(req: ChatRequest, request: Request):
-    def stream_response():
+    async def stream_response():
         if violates_safety(req.prompt):
             yield f"event: chunk\ndata: Request blocked by safety policy.\n\n"
             yield f"event: done\ndata: [DONE]\n\n"
@@ -346,25 +507,62 @@ async def stream(req: ChatRequest, request: Request):
 
         history = CONVERSATION_HISTORY[req.session_id][-HISTORY_LIMIT:]
         memory_context = "\n".join(history)
-        full_prompt = f"{SYSTEM_PROMPT}\n\n{memory_context}\n\nUSER: {req.prompt}\nASSISTANT:"
+        
+        # Special handling for short prompts that might trigger greetings
+        is_short_prompt = len(req.prompt.split()) < 4
+        short_prompt_addition = "" if not is_short_prompt else "\nNOTE: This is a very short prompt. Do NOT respond with greetings. Be extremely direct."
+        
+        full_prompt = f"{SYSTEM_PROMPT}{short_prompt_addition}\n\n{memory_context}\n\nUSER: {req.prompt}\n"
 
         models = route_models(req.prompt)
-        model = models[0]  # pick first (you could judge later)
-
-        full_output = ""
-        for chunk in model(full_prompt, max_tokens=MAX_TOKENS_GEN, stream=True):
-            token = chunk["choices"][0]["text"]
-            full_output += token
-            yield f"event: chunk\ndata: {token}\n\n"
-
-        # Final safety check
-        if violates_safety(full_output):
-            full_output = "Generated content blocked by safety policy."
-
-        CONVERSATION_HISTORY[req.session_id].append(f"USER: {req.prompt}\nASSISTANT: {full_output}")
+        model = models[0]  # pick first model for streaming
+        
+        # Collect the full output before starting to stream
+        try:
+            response = model(
+                full_prompt,
+                max_tokens=MAX_TOKENS_GEN,
+                stream=False  # Get the complete response first
+            )
+            
+            full_output = response["choices"][0]["text"]
+            
+            # Apply all cleaning steps before streaming
+            cleaned_output = clean_answer(full_output)
+            cleaned_output = anti_echo(req.prompt, cleaned_output)
+            cleaned_output = enforce_no_greetings(cleaned_output)
+            
+            # Safety check
+            if violates_safety(cleaned_output):
+                yield f"event: chunk\ndata: Generated content blocked by safety policy.\n\n"
+                yield f"event: done\ndata: [DONE]\n\n"
+                return
+                
+            # Stream the cleaned output character by character to mimic streaming
+            buffer = ""
+            for char in cleaned_output:
+                buffer += char
+                # Send in small chunks to improve perceived streaming
+                if len(buffer) >= 3 or char in ['.', '!', '?', '\n']:
+                    yield f"event: chunk\ndata: {buffer}\n\n"
+                    buffer = ""
+                    await asyncio.sleep(0.01)  # Small delay for natural feel
+                    
+            # Send any remaining buffer
+            if buffer:
+                yield f"event: chunk\ndata: {buffer}\n\n"
+                
+            # Store the cleaned output in conversation history
+            CONVERSATION_HISTORY[req.session_id].append(f"USER: {req.prompt}\n {cleaned_output}")
+            
+        except Exception as e:
+            logger.error(f"Streaming error: {e}")
+            yield f"event: chunk\ndata: An error occurred while processing your request.\n\n"
+            
         yield f"event: done\ndata: [DONE]\n\n"
 
     return StreamingResponse(stream_response(), media_type="text/event-stream")
+
 
 
 
