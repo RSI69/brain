@@ -45,3 +45,65 @@ Unzip the `multi-llm` folder anywhere (e.g., `C:\AI\multi-llm`)
 
 ```cmd
 cd C:\AI\multi-llm
+4. Create and Activate Python Environment
+cmd
+Copy
+Edit
+python -m venv .venv
+.venv\Scripts\activate
+5. Install Dependencies
+cmd
+Copy
+Edit
+pip install -r requirements.txt
+6. Download Model Files
+Get these .gguf files and place them in the /models folder:
+
+Mistral-7B-Instruct-Q4_K_M.gguf
+
+Meta-Llama-3-8B-Instruct-Q4_K_M.gguf
+
+Your folder should look like:
+
+markdown
+Copy
+Edit
+multi-llm/
+ └─ models/
+      ├─ mistral-7b-instruct-v0.1.Q4_K_M.gguf
+      └─ Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+7. Start the Server
+cmd
+Copy
+Edit
+python multi_llm_backend.py
+You should see something like:
+
+arduino
+Copy
+Edit
+INFO:     Uvicorn running on http://127.0.0.1:8000
+8. Open Your Browser
+Go to http://localhost:8000
+
+FAQ
+Does it use the internet?
+No. All inference is local. Nothing is logged or sent anywhere.
+
+Change tone or models?
+Edit the variables at the top of multi_llm_backend.py.
+
+Linux?
+Use source .venv/bin/activate to activate venv, rest is the same.
+
+Out of memory?
+Use a smaller model or close other GPU apps.
+
+License
+MIT — Do whatever you want.
+
+yaml
+Copy
+Edit
+
+---
