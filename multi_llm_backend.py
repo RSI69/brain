@@ -232,16 +232,22 @@ def route_models(prompt: str):
     return list(GEN_MODELS.values())
 
 async def generate(model: Llama, prompt: str, max_tok: int) -> str:
-    return (
-        await asyncio.to_thread(
-            model,
-            prompt,
-            max_tokens=max_tok,
-            stop=["###", "\n\n", "USER:", "ASSISTANT:", "User:"],
-            echo=False,
-            stream=False,
-        )
-    )["choices"][0]["text"].strip()
+    out = await asyncio.to_thread(
+        model,
+        prompt,
+        max_tokens=max_tok,
+        stop=["###", "\n\n", "USER:", "ASSISTANT:", "User:"],
+        echo=False,
+        stream=False,
+    )
+    # Catch malformed output
+    raw = out["choices"][0]["text"].strip()
+    if "R:" in raw or raw.lower().startswith("i can provide"):
+        logger.warning("Fallback or alignment-bleed detected: %s", raw[:100])
+    # Remove leaked formatting like `R:` and duplicated "can provide" templates
+    raw = re.sub(r"(?m)^R:\s*", "", raw)
+    raw = re.sub(r"\b(can|cannot) provide (you )?(with )?", "", raw)
+    return raw
 
 def clean_answer(text):
     text = text.strip()
@@ -294,6 +300,10 @@ def clean_answer(text):
     
     # Remove any leading dialogue label, even if there's junk in front
     text = re.sub(r"^(.*?\b)?(ASSISTANT:|ISTANT:|USER:|User:|Assistant:)\s*", "", text, flags=re.I)
+
+    # Remove OpenAssistant-style R: rationale blocks
+    text = re.sub(r"(?s)\bR:\s*.*?$", "", text)
+
     
     # Remove any label that might appear after a period/comma (catch odd formatting)
     text = re.sub(r"\b(ASSISTANT:|ISTANT:|USER:|User:|Assistant:)\b\s*", "", text, flags=re.I)
@@ -456,7 +466,10 @@ async def ratelimit_handler(request: Request, exc: RateLimitExceeded):
 @app.post("/chat")
 @limiter.limit(f"{RATE_LIMIT}/minute")
 async def chat(req: ChatRequest, request: Request):
-    history = CONVERSATION_HISTORY[req.session_id][-HISTORY_LIMIT:]
+    history = [
+    line for line in CONVERSATION_HISTORY[req.session_id][-HISTORY_LIMIT:]
+    if not re.search(r"^R:|can provide|I cannot", line, re.I)
+    ]
     memory_context = "\n".join(history)
     
     # Special handling for short prompts that might trigger greetings
