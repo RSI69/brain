@@ -50,6 +50,17 @@ Edit
 
 ---
 
+## 3.5 Download the Models
+
+You need to manually download these `.gguf` files and place them in the `/models` folder:
+
+- [Mistral-7B-Instruct-Q4_K_M.gguf](https://huggingface.co/TheBloke/Mistral-7B-Instruct-GGUF)         **Mistral-7B-Instruct-GGUF** Q4_K_M
+- [Meta-Llama-3-8B-Instruct-Q4_K_M.gguf](https://huggingface.co/TheBloke/Llama-3-8B-Instruct-GGUF)   **Llama-3-8B-Instruct-GGUF** Q4_K_M
+
+Folder structure:
+
+
+
 ### 4. Make sure model files are in the `/models` folder
 
 This folder should contain:
