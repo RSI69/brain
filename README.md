@@ -1,130 +1,122 @@
-# 🧠 multi-llm chat
+# 🧠 multi-llm
 
-A fast, offline, profanity-enabled AI chatbot that runs completely on your PC. No internet, no accounts, no spyware.
-
----
-
-## ✅ Quick Start (Windows Only)
-
-### 1. Install Python 3.10 (if you don’t have it)
-
-Go to: https://www.python.org/downloads/release/python-3100/  
-Download the Windows installer and **check "Add to PATH"** during installation.
+A fast, profanity-enabled local AI chat engine.  
+No internet. No accounts. No bullshit. Just local inference with memory, safety, and speed.
 
 ---
 
-### 2. Open Command Prompt
+## ✅ Features
 
-Press `Win + R`, type `cmd`, hit enter.
+- Multiple model routing (chat, code, long-form)
+- Brutally honest tone — no flattery or apologies
+- Safety filtering (credit cards, CP, bombs, scams)
+- Optional RAG via FAISS
+- FastAPI backend with SSE streaming
+- Simple frontend UI (no JS frameworks)
+- LRU cache + memory of previous 5 messages
 
-Then use `cd` to go to the folder where you downloaded this repo.  
-For example:
+---
 
-**cd C:\Users\YourName\Downloads\multi-llm**
+## 🖥 Requirements
 
-yaml
+- GPU: RTX 3080+ (or Apple M1/M2/M3 for Metal)
+- RAM: 16 GB minimum
+- OS: Windows (tested) or Linux
+- Python: 3.10
+
+---
+
+## 🚀 Quick Setup (Windows)
+
+### 1. Install Python 3.10
+
+Download from: https://www.python.org/downloads/release/python-3100/  
+✅ **Check “Add Python to PATH” during install**
+
+---
+
+### 2. Download and unzip
+
+Unzip the full folder to somewhere like:
+
+```text
+C:\AI\multi-llm
+
+3. Open Command Prompt inside the folder
+cmd
 Copy
 Edit
+cd C:\AI\multi-llm
 
----
-
-### 3. Activate Python environment
-
-If you see a `Scripts` folder inside `.venv`, run:
-
-**.venv\Scripts\activate**
-
-lua
+4. Create and activate the Python environment
+cmd
 Copy
 Edit
-
-If not, create the environment and install everything:
-
-**python -m venv .venv
+python -m venv .venv
 .venv\Scripts\activate
-pip install -r requirements.txt**
 
-yaml
+5. Install required libraries
+cmd
 Copy
 Edit
+pip install -r requirements.txt
 
----
+6. Download models
+Put these .gguf files into the /models folder:
 
-## 3.5 Download the Models
+Mistral-7B-Instruct.Q4_K_M
 
-You need to manually download these `.gguf` files and place them in the `/models` folder:
+Llama-3-8B-Instruct.Q4_K_M
 
-- [Mistral-7B-Instruct-Q4_K_M.gguf](https://huggingface.co/TheBloke/Mistral-7B-Instruct-GGUF)         **Mistral-7B-Instruct-GGUF** Q4_K_M
-- [Meta-Llama-3-8B-Instruct-Q4_K_M.gguf](https://huggingface.co/TheBloke/Llama-3-8B-Instruct-GGUF)   **Llama-3-8B-Instruct-GGUF** Q4_K_M
+Your folder should look like:
 
-Folder structure:
-
-
-
-### 4. Make sure model files are in the `/models` folder
-
-This folder should contain:
-
-- `mistral-7b-instruct-v0.1.Q4_K_M.gguf`
-- `Meta-Llama-3-8B-Instruct.Q4_K_M.gguf`
-
-(You can use different .gguf models if you want — just update the paths in `multi_llm_backend.py`.)
-
----
-
-### 5. Run the server
-
-In the same Command Prompt window:
-
-**python multi_llm_backend.py**
-
-sql
+text
 Copy
 Edit
+multi-llm/
+├── models/
+│   ├── mistral-7b-instruct-v0.1.Q4_K_M.gguf
+│   └── Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+(If you use different models, change their paths in multi_llm_backend.py.)
 
-You should see logs like:
-
-INFO: Uvicorn running on http://127.0.0.1:8000
-
-yaml
+7. Run the backend server
+cmd
 Copy
 Edit
+python multi_llm_backend.py
+You should see:
 
----
-
-### 6. Open the chat
-
-Go to this address in your browser:
-
-**http://localhost:8000**
-
-yaml
+text
 Copy
 Edit
+INFO:     Uvicorn running on http://127.0.0.1:8000
 
-You can now chat with your local AI system — it remembers previous messages and streams answers.
+8. Open the chat UI
+Go to your browser and visit:
 
----
+arduino
+Copy
+Edit
+http://localhost:8000
+You're in.
 
-## 🛡️ Safety & Filters
+🔐 Safety Filters
+The backend blocks:
 
-The system **blocks:**
+Credit card numbers (real PANs)
 
-- Credit card numbers
-- Child exploitation
-- Explosive instructions
-- Known scam patterns
+Child exploitation prompts
 
----
+Bomb/explosive crafting guides
 
-## 💡 Tips
+Fraud / scam phrasing
 
-- Everything runs offline, no internet needed after model files are present
-- You can modify the tone, memory length, or models inside `multi_llm_backend.py`
-- The system streams replies word-by-word and shows a % loading bar
+💡 Tips
+System remembers last 5 messages per session
 
----
+All processing is local — nothing leaves your PC
 
-## 📃 License
+You can tweak tone, model routing, safety, and memory in multi_llm_backend.py
 
-MIT — do whatever you want.
+📃 License
+MIT — no restrictions, fork and go.
