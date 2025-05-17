@@ -35,7 +35,7 @@ Local, private, multi-model AI chat engine with brutal honesty and real safety f
 
 ---
 
-### 2. Download and Unzip
+### 2. Download
 
 Create a new folder called "multi-llm"
 
@@ -44,23 +44,6 @@ Download all files in https://github.com/RSI69/brain to your new folder, "multi-
 Right click "multi-llm" folder, Copy as path
 
 ---
-
-### 3. Open Command Prompt in the Folder cmd
-
-Go to Start, type cmd, open command prompt
-
-in cmd enter:
-cd path(paste) 
-
-```cmd example
-cd C:\AI\multi-llm
-
-in cmd enter:
-python -m venv .venv
-.venv\Scripts\activate
-
-in cmd enter:
-pip install -r requirements.txt
 
 On the internet, go download these .gguf files and create a new folder in the multi-llm folder, and name it "models", save the .gguf files there (7)
 
@@ -83,13 +66,30 @@ multi-llm/
       ├─ mistral-7b-instruct-v0.1.Q4_K_M.gguf
        ........
       └─ Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+
+### 3. Open Command Prompt in the Folder cmd
+
+Go to Start, type cmd, open command prompt
+
+in cmd enter:
+cd path(paste) 
+
+```cmd example
+cd C:\AI\multi-llm
+
+in cmd enter:
+python -m venv .venv
+.venv\Scripts\activate
+
+in cmd enter:
+pip install -r requirements.txt
  
 in cmd enter:
-**python multi_llm_backend.py --host 0.0.0.0 --port 8000**
+python multi_llm_backend.py --host 0.0.0.0 --port 8000
 
 You should see: INFO:     Uvicorn running on http://127.0.0.1:8000
 
-Open Your Browser Go to **http://localhost:8000**
+Open Your Browser Go to: http://localhost:8000
 
 FAQ
 Does it use the internet?
