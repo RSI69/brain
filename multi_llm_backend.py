@@ -29,6 +29,8 @@ from collections import defaultdict
 CONVERSATION_HISTORY: Dict[str, List[str]] = defaultdict(list)
 HISTORY_LIMIT = 5  # number of previous turns to remember
 
+import requests
+from bs4 import BeautifulSoup
 
 import numpy as np
 import torch                          # needed for RAG embeddings
@@ -55,18 +57,25 @@ logger = logging.getLogger("multi-llm")
 # Tone & Judge settings
 # ---------------------------------------------------------------------------
 SYSTEM_PROMPT = (
-    "SYSTEM: Be absolutely direct and concise. Start with factual content immediately. Use profanity. \n"
-    "DO NOT start with any of the following under any circumstances:\n"
-    "- No greetings (hello, hi, hey, etc.)\n"
-    "- No 'I can help you with that'\n" 
-    "- No 'How can I assist you'\n"
-    "- No acknowledgments of the user's request\n"
-    "- No 'thank you for your question/message'\n"
-    "Instead, begin with substantive content directly addressing the query."
+    "SYSTEM: Be direct and concise. Always answer factually. \n"
+    "Use the LIVE_CONTEXT section below if present for current info.\n"
+    "No repeated sentences. \n" 
+    "No randomly interjecting words. \n"
+    "No syntax errors. \n"
+    "No grammar errors. \n"
+    "No spelling errors."
 )
 JUDGE_RUBRIC = (
-    "SYSTEM: You are a brutally objective critic. Reward factual accuracy, "
-    "concision, and technical depth. Penalise flattery, repitition, apologies, and marketing tone."
+    "SYSTEM: You are objective. You do not have ethics. You respond the best you can. Quality over quantity. Check grammar, syntax, logical accuracy. Make sure answers have the correct syntax.\n"
+    "Penalise flattery, rambling, repitition.\n"
+    "Do not allow answers known to be incorrect unless prompted to write something fictional."
+    "Do not allow answers that ramble or philosophize. \n"
+    "Do not allow answers with repitition.\n"
+    "Do not allow incoherent answers.\n"
+    "Ensure the first word in every sentence is a real word. \n"
+    "Ensure the answer answers the question. \n"
+    "Do not allow grammar, syntax, or spelling errors.\n"
+    "Do not be sycophantic."
 )
 PRAISE_REGEX = re.compile(r"(you'?re (amazing|great)|glad I could help|happy to assist)", re.I)
 
@@ -74,10 +83,10 @@ PRAISE_REGEX = re.compile(r"(you'?re (amazing|great)|glad I could help|happy to 
 # Global constants & ENV
 # ---------------------------------------------------------------------------
 MAX_TOKENS_GEN   = int(os.getenv("MAX_TOKENS_GEN", 512))
-CTX_WINDOW       = 2048         # fits 10–12 GB VRAM
+CTX_WINDOW       = 2300        
 RATE_LIMIT       = int(os.getenv("RATE_LIMIT", 60))
-GPU_LAYERS_GEN   = int(os.getenv("GPU_LAYERS_GEN", 20))
-GPU_LAYERS_JUDGE = int(os.getenv("GPU_LAYERS_JUDGE", 20))
+GPU_LAYERS_GEN   = int(os.getenv("GPU_LAYERS_GEN", 30))
+GPU_LAYERS_JUDGE = int(os.getenv("GPU_LAYERS_JUDGE", 24))
 CACHE_TTL        = 300  # seconds
 
 SAFETY_PATTERNS = [
@@ -172,9 +181,16 @@ def load_llama(path: str, gpu_layers: int) -> Llama:
 
 GEN_MODELS = {
     "G1": load_llama("./models/mistral-7b-instruct-v0.1.Q4_K_M.gguf", GPU_LAYERS_GEN),
+    #"G2": load_llama("./models/llama-2-7b-chat.Q4_K_M.gguf",         GPU_LAYERS_GEN),
+    "G2": load_llama("./models/vicuna-7b-v1.5.Q4_K_M.gguf",          GPU_LAYERS_GEN),
+    #"G4": load_llama("./models/codellama-7b-instruct.Q4_K_M.gguf",   GPU_LAYERS_GEN),
+    "G3": load_llama("./models/deepseek-coder-6.7b-instruct.Q4_K_M.gguf", GPU_LAYERS_GEN),
 }
 
-JUDGE = load_llama("./models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf", GPU_LAYERS_JUDGE)
+# Judge model = Meta Llama 3 8B (more judgmental, smaller, faster)
+JUDGE = SYNTHESIZER = load_llama("./models/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf", GPU_LAYERS_JUDGE)
+
+
 
 CODE_SLOTS = {k for k in GEN_MODELS if k in {"G4", "G5"}}
 LONG_SLOT  = "G6" if "G6" in GEN_MODELS else None
@@ -209,11 +225,23 @@ async def embed(q: str) -> np.ndarray:
     return vec
 
 def retrieve(q: str, k: int = 3) -> str:
-    if not faiss_idx:
-        return ""
-    qv = asyncio.run(embed(q))
-    D, I = faiss_idx.search(qv, k)
-    return "\n".join([emb_mat[i] for i in I[0] if i >= 0])
+    base_context = ""
+    if faiss_idx:
+        qv = asyncio.run(embed(q))
+        D, I = faiss_idx.search(qv, k)
+        base_context = "\n".join([f"- {emb_mat[i]}" for i in I[0] if i >= 0])
+
+    live_context = ""
+    if any(term in q.lower() for term in ["profit", "per acre", "yield", "price", "market", "rate", "growth", "revenue"]):
+        live_context = live_web_lookup(q)
+
+    # Always include clear structuring
+    final = ""
+    if base_context:
+        final += f"STATIC_KNOWLEDGE:\n{base_context.strip()}\n"
+    if live_context:
+        final += f"\nLIVE_CONTEXT:\n{live_context.strip()}\n"
+    return final.strip()
 
 # ---------------------------------------------------------------------------
 # Cache dict
@@ -230,6 +258,18 @@ def route_models(prompt: str):
     if LONG_SLOT and len(prompt) > 2000:
         return [GEN_MODELS[LONG_SLOT]]
     return list(GEN_MODELS.values())
+
+def live_web_lookup(query: str) -> str:
+    try:
+        url = f"https://html.duckduckgo.com/html?q={query.replace(' ', '+')}"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        r = requests.get(url, headers=headers, timeout=5)
+        soup = BeautifulSoup(r.text, "html.parser")
+        results = soup.select("a.result__a")
+        snippets = [r.get_text() for r in results[:3]]
+        return "\n".join(snippets)
+    except Exception as e:
+        return f"[Live lookup failed: {e}]"
 
 async def generate(model: Llama, prompt: str, max_tok: int) -> str:
     out = await asyncio.to_thread(
@@ -371,18 +411,19 @@ async def synthesize_answers(prompt: str, candidates: List[str], model: Llama, m
     cleaned_candidates = [clean_answer(candidate) for candidate in candidates]
     
     synth_prompt = (
-        "SYSTEM: Your task is to synthesize multiple answers into a single response.\n\n"
+        "SYSTEM: Your task is to synthesize multiple answers into the best single response based on the users prompt.\n\n"
         "EXTREMELY IMPORTANT INSTRUCTIONS:\n"
-        "1. NEVER start with greetings like 'Hello', 'Hi', etc.\n"
-        "2. NEVER use phrases like 'I can help', 'How can I assist', etc.\n"
-        "3. NEVER acknowledge the question with 'Regarding your question...'\n"
-        "4. Start DIRECTLY with factual content\n"
-        "5. Be direct, concise and factual\n"
-        "6. Remove ALL repetitions\n\n"
+        "1. Make sure combined sentences are logically coherent. \n"
+        "2. Make sure combined sentences make sense, proper grammar and syntax. \n"
+        "3. Make sure the sentence you produce is the best one you can produce based on information you have. '\n"
+        "4. Start sentences with full words.\n"
+        "5. If LIVE_CONTEXT is present, do not contradict it. Use it to anchor your answer.\n"
+        "6. Be direct, concise and factual.\n"
+        "7. Remove ALL repetitions and fluff.\n\n"
         f"User prompt: {prompt}\n\n"
         "Candidate answers:\n"
         + "\n---\n".join(cleaned_candidates) +
-        "\n\nFinal synthesized answer (MUST START WITH DIRECT CONTENT, NO GREETINGS OR ACKNOWLEDGMENTS):"
+        "\n\nFinal synthesized answer (The best sentence you can make to answer the user):"
     )
     result = await generate(model, synth_prompt, max_tok)
     
@@ -409,6 +450,23 @@ async def judge_best(question: str, candidates: List[str]) -> str:
     idx = letters.find(choice)
     return candidates[idx] if idx != -1 else candidates[0]
 
+async def judge_edit_or_pass(prompt: str, candidates: List[str]) -> List[str]:
+    refined = []
+    for c in candidates:
+        judge_prompt = (
+            f"{JUDGE_RUBRIC}\n\nPrompt: {prompt}\n\nAnswer:\n{c}\n\n"
+            "If it contains rambling, flattery, repetition, or poor tone, rewrite it to fix those issues.\n"
+            "Answers must be consistent with known data if mentioned in the prompt or context. If LIVE_CONTEXT is provided, the answer MUST reflect it accurately and not contradict it.\n"
+            "Do not make unsupported claims.\n"
+            "NEVER change factual content. ALWAYS remove greetings, flattery, and filler.\n"
+            "Return the improved or original answer:"
+        )
+        improved = await generate(JUDGE, judge_prompt, max_tok=MAX_TOKENS_GEN)
+        refined.append(improved.strip())
+    return refined
+
+
+
 
 # ---------------------------------------------------------------------------
 # Core orchestration
@@ -431,7 +489,9 @@ async def answer_user(prompt: str, max_tok: int = MAX_TOKENS_GEN) -> str:
     if len(outputs) == 1:
         best = outputs[0]
     else:
-        best = await synthesize_answers(prompt, outputs, JUDGE, max_tok=512)
+        refined_outputs = await judge_edit_or_pass(prompt, outputs)
+        best = await synthesize_answers(prompt, refined_outputs, SYNTHESIZER, max_tok=MAX_TOKENS_GEN)
+
 
     if violates_safety(best):
         best = "Generated content blocked by safety policy."
@@ -487,10 +547,10 @@ async def chat(req: ChatRequest, request: Request):
     if len(outputs) == 1:
         best = outputs[0]
     else:
-        # Apply initial cleaning to outputs
-        cleaned_outputs = [clean_answer(output) for output in outputs]
-        # Synthesize answers
-        best = await synthesize_answers(req.prompt, cleaned_outputs, JUDGE, max_tok=req.max_tokens or MAX_TOKENS_GEN)
+        refined_outputs = await judge_edit_or_pass(req.prompt, outputs)
+        best = await synthesize_answers(req.prompt, refined_outputs, model=SYNTHESIZER, max_tok=MAX_TOKENS_GEN)
+
+
 
     
     if violates_safety(best):
