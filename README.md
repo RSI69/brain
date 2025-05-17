@@ -62,23 +62,28 @@ python -m venv .venv
 in cmd enter:
 pip install -r requirements.txt
 
-On the internet, go download these .gguf files and place. Create a new folder in the multi-llm folder, and name it "models":
+On the internet, go download these .gguf files and create a new folder in the multi-llm folder, and name it "models", save the .gguf files there (7)
 
-Search "Mistral-7B-Instruct-Q4_K_M.gguf" on google and download (Q4_K_M version), save in:                     https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/blob/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+Search "1-7" on google and download (Q4_K_M version), save in:                 
 multi-llm/
- └─ models folder 
+ └─ models
 
-Search "Meta-Llama-3-8B-Instruct-Q4_K_M.gguf" on google and download (Q4_K_M version), save in:                 https://huggingface.co/QuantFactory/Meta-Llama-3-8B-Instruct-GGUF/blob/main/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
-multi-llm/
- └─ models/ folder 
+1. mistral-7b-instruct-v0.1.Q4_K_M.gguf          https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/blob/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+2. llama-2-7b-chat.Q4_K_M.gguf                   https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/blob/main/llama-2-7b-chat.Q4_K_M.gguf
+3. vicuna-7b-v1.5.Q4_K_M.gguf                    https://huggingface.co/TheBloke/vicuna-7B-v1.5-GGUF/blob/main/vicuna-7b-v1.5.Q4_K_M.gguf
+4. codellama-7b-instruct.Q4_K_M.gguf             https://huggingface.co/TheBloke/CodeLlama-7B-Instruct-GGUF/blob/main/codellama-7b-instruct.Q4_K_M.gguf
+5. deepseek-coder-6.7b-instruct.Q4_K_M.gguf      https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GGUF/blob/main/deepseek-coder-6.7b-instruct.Q4_K_M.gguf
+6. Llama-3-13B-Instruct-Q4_K_M.gguf              https://huggingface.co/tensorblock/Llama-3-13B-Instruct-GGUF/blob/main/Llama-3-13B-Instruct-Q4_K_M.gguf
+7. Meta-Llama-3-8B-Instruct.Q4_K_M.gguf          https://huggingface.co/QuantFactory/Meta-Llama-3-8B-Instruct-GGUF/blob/main/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
 
 Your folder should look like:
 
 multi-llm/
  └─ models/
       ├─ mistral-7b-instruct-v0.1.Q4_K_M.gguf
+       ........
       └─ Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
-
+ 
 in cmd enter:
 **python multi_llm_backend.py --host 0.0.0.0 --port 8000**
 
