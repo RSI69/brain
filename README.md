@@ -43,7 +43,7 @@ Download all files in https://github.com/RSI69/brain to your new folder, "multi-
 
 ---
 
-On the internet, go download these .gguf files and create a new folder in the multi-llm folder, and name it "models", save the .gguf files there (7)
+On the internet, go download these .gguf files and create a new folder in the multi-llm folder, and name it "models", save the 7 .gguf files there
 
 Search "1-7" on google and download (Q4_K_M version), save in:                 
 multi-llm/
