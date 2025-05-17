@@ -37,26 +37,39 @@ Local, private, multi-model AI chat engine with brutal honesty and real safety f
 
 ### 2. Download and Unzip
 
-Unzip the `multi-llm` folder anywhere (e.g., `C:\AI\multi-llm`)
+Create a new folder called "multi-llm"
+
+Download all files in https://github.com/RSI69/brain to your new folder, "multi-llm"
+
+Right click "multi-llm" folder, Copy as path
 
 ---
 
 ### 3. Open Command Prompt in the Folder cmd
 
-```cmd
-cmd C:\AI\multi-llm
+Go to Start, type cmd, open command prompt
 
-in cmd enter **python -m venv .venv
-.venv\Scripts\activate**
+in cmd enter:
+cd path(paste) 
 
-in cmd enter **pip install -r requirements.txt**
+```cmd example
+cd C:\AI\multi-llm
 
-On the internet, go download these .gguf files and place them in the **/models** folder:
+in cmd enter:
+python -m venv .venv
+.venv\Scripts\activate
 
-**Mistral-7B-Instruct-Q4_K_M.gguf** search this on google and download (Q4_K_M version) in multi-llm/
- └─ models/ folder 
+in cmd enter:
+pip install -r requirements.txt
 
-**Meta-Llama-3-8B-Instruct-Q4_K_M.gguf** search this on google and download (Q4_K_M version) in multi-llm/
+On the internet, go download these .gguf files and place. Create a new folder in the multi-llm folder, and name it "models":
+
+Search "Mistral-7B-Instruct-Q4_K_M.gguf" on google and download (Q4_K_M version), save in:                     https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/blob/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+multi-llm/
+ └─ models folder 
+
+Search "Meta-Llama-3-8B-Instruct-Q4_K_M.gguf" on google and download (Q4_K_M version), save in:                 https://huggingface.co/QuantFactory/Meta-Llama-3-8B-Instruct-GGUF/blob/main/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+multi-llm/
  └─ models/ folder 
 
 Your folder should look like:
@@ -66,7 +79,8 @@ multi-llm/
       ├─ mistral-7b-instruct-v0.1.Q4_K_M.gguf
       └─ Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
 
-in **cmd** enter **python multi_llm_backend.py --host 0.0.0.0 --port 8000**
+in cmd enter:
+**python multi_llm_backend.py --host 0.0.0.0 --port 8000**
 
 You should see: INFO:     Uvicorn running on http://127.0.0.1:8000
 
@@ -83,4 +97,4 @@ Out of memory?
 Use a smaller model or close other GPU apps.
 
 License
-MIT — Do whatever you want.
+MIT
