@@ -41,8 +41,6 @@ Create a new folder called "multi-llm"
 
 Download all files in https://github.com/RSI69/brain to your new folder, "multi-llm"
 
-Right click "multi-llm" folder, Copy as path
-
 ---
 
 On the internet, go download these .gguf files and create a new folder in the multi-llm folder, and name it "models", save the .gguf files there (7)
@@ -56,7 +54,7 @@ multi-llm/
 3. vicuna-7b-v1.5.Q4_K_M.gguf                    https://huggingface.co/TheBloke/vicuna-7B-v1.5-GGUF/blob/main/vicuna-7b-v1.5.Q4_K_M.gguf
 4. codellama-7b-instruct.Q4_K_M.gguf             https://huggingface.co/TheBloke/CodeLlama-7B-Instruct-GGUF/blob/main/codellama-7b-instruct.Q4_K_M.gguf
 5. deepseek-coder-6.7b-instruct.Q4_K_M.gguf      https://huggingface.co/TheBloke/deepseek-coder-6.7B-instruct-GGUF/blob/main/deepseek-coder-6.7b-instruct.Q4_K_M.gguf
-6. Llama-3-13B-Instruct-Q4_K_M.gguf              https://huggingface.co/tensorblock/Llama-3-13B-Instruct-GGUF/blob/main/Llama-3-13B-Instruct-Q4_K_M.gguf
+6. Llama-3-13B-Instruct-Q4_K_M.gguf              https://huggingface.co/hus960/Llama-3-13B-Instruct-Q4_K_M-GGUF/blob/main/llama-3-13b-instruct.Q4_K_M.gguf
 7. Meta-Llama-3-8B-Instruct.Q4_K_M.gguf          https://huggingface.co/QuantFactory/Meta-Llama-3-8B-Instruct-GGUF/blob/main/Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
 
 Your folder should look like:
@@ -67,15 +65,17 @@ multi-llm/
 
 ### 3. Open Command Prompt in the Folder cmd
 
+Right click "multi-llm" folder, Copy as path
+
 Go to Start, type cmd, open command prompt
 
-in cmd enter:
-cd path(paste) 
+in cmd type:
+cd (paste)path 
 
-```cmd example
-cd C:\AI\multi-llm
+```example
+cd C:\AI\multi-llm```
 
-in cmd enter:
+next, in cmd enter:
 python -m venv .venv
 .venv\Scripts\activate
 
