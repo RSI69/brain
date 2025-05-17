@@ -81,6 +81,9 @@ python -m venv .venv
 
 in cmd enter:
 pip install -r requirements.txt
+
+in cmd enter:
+pip install beautifulsoup4
  
 in cmd enter:
 python multi_llm_backend.py --host 0.0.0.0 --port 8000
