@@ -63,9 +63,7 @@ Your folder should look like:
 
 multi-llm/
  └─ models/
-      ├─ mistral-7b-instruct-v0.1.Q4_K_M.gguf
-       ........
-      └─ Meta-Llama-3-8B-Instruct.Q4_K_M.gguf
+
 
 ### 3. Open Command Prompt in the Folder cmd
 
