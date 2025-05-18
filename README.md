@@ -8,7 +8,6 @@ Local, private, multi-model AI chat engine with brutal honesty and real safety f
 ## Features
 
 - Multiple local LLMs (route code, chat, long-context)
-- No flattery, no apologies — brutal, profanity-enabled replies (edit backend to change)
 - Remembers last 5 messages per session
 - Built-in safety filters (blocks credit cards, CP, bomb guides, scams)
 - Streaming replies with % progress bar
