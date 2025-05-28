@@ -1,3 +1,5 @@
+THIS MODEL IS INTENTIONALLY INCOMPLTE FOR PROPRIETARY REASONS
+
 # 🧠 multi-llm
 
 Local, private, multi-model AI chat engine with brutal honesty and real safety filters.  
